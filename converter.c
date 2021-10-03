@@ -151,24 +151,26 @@ converter(const char *in, const char *out)
 		fprintf(stderr, "Malloc failed: %s\n", "buf");
 		return -1;
 	}
-	int res_size = (TOTAL_RES + 8) * sizeof(float);
-	float *res = malloc(res_size);
+	float *res = malloc(TOTAL_RES * sizeof(float));
 	if (res == NULL) {
 		fprintf(stderr, "Malloc failed: %s\n", "res");
 		return -1;
 	}
-	res[0] = LAT_RES;
-	res[1] = LON_RES;
-	res[2] = 80.0;
-	res[3] = 0.0;
-	res[4] = -0.5;
-	res[5] = -90.0;
-	res[6] = 0.0;
-	res[7] = 0.5;
+	float metadata[8];
+	metadata[0] = LAT_RES;
+	metadata[1] = LON_RES;
+	metadata[2] = 80.0;
+	metadata[3] = 0.0;
+	metadata[4] = -0.5;
+	metadata[5] = -90.0;
+	metadata[6] = 0.0;
+	metadata[7] = 0.5;
+	fwrite(metadata, sizeof(float), 8, fout);
+
 	fseek(fin, 0, SEEK_SET);
 	while (fread(buf, 1, size, fin) == size) {
 		read_data(buf, res);
-		fwrite(res, 1, res_size, fout);
+		fwrite(res, sizeof(float), TOTAL_RES, fout);
 	}
 
 	free(buf);
