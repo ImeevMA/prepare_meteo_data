@@ -4,8 +4,8 @@
 #include "main.h"
 
 enum mode {
-	NOTHING = 0,
-	CONVERTER = 1,
+	NOTHING,
+	CONVERTER,
 };
 
 int
@@ -45,6 +45,9 @@ main(int argc, const char **argv)
 			++i;
 			fout = argv[i];
 			break;
+		default:
+			fprintf(stderr, "Wrong option.\n");
+			return -1;
 		}
 	}
 
