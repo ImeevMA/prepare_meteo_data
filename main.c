@@ -6,6 +6,7 @@
 enum mode {
 	NOTHING,
 	CONVERTER,
+	NORMALIZER,
 };
 
 int
@@ -37,6 +38,19 @@ main(int argc, const char **argv)
 			}
 			mode = CONVERTER;
 			break;
+		case 'n':
+			if (i + 1 >= argc) {
+				fprintf(stderr, "Input file name missing.\n");
+				return -1;
+			}
+			++i;
+			fin = argv[i];
+			if (mode != NOTHING) {
+				fprintf(stderr, "Too many modes.\n");
+				return -1;
+			}
+			mode = NORMALIZER;
+			break;
 		case 'o':
 			if (i + 1 >= argc) {
 				fprintf(stderr, "Output file name missing.\n");
@@ -60,6 +74,14 @@ main(int argc, const char **argv)
 		if (fout == NULL)
 			fout = "converter_output";
 		return converter(fin, fout);
+	case NORMALIZER:
+		if (fin == NULL) {
+			fprintf(stderr, "Input file name missing.\n");
+			return -1;
+		}
+		if (fout == NULL)
+			fout = "normalizer_output";
+		return normalizer(fin, fout);
 	default:
 		fprintf(stderr, "Mode does not defined.\n");
 		return -1;
