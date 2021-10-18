@@ -64,13 +64,18 @@ new_data(const float *data, int len, const uint8_t *mask, int mask_len,
 			continue;
 		}
 		float d = data[i];
-		res[i] = n;
-		for (int j = 1; j < n; ++j) {
-			if (d < qs[j]) {
-				res[i] = j;
-				break;
-			}
-		}
+		if (d < qs[1])
+			res[i] = 1;
+		else if (d > qs[n - 1])
+			res[i] = 3;
+		else
+			res[i] = 2;
+		// for (int j = 1; j < n; ++j) {
+		// 	if (d < qs[j]) {
+		// 		res[i] = j;
+		// 		break;
+		// 	}
+		// }
 	}
 	return res;
 }
@@ -101,8 +106,8 @@ normalizer(const char *in, const char *out) {
 	fclose(fmask);
 
 	int len = size / 4;
-	float *quantiles = new_quantiles(data, len, mask, mask_len, 10);
-	uint8_t *result = new_data(data, len, mask, mask_len, quantiles, 10);
+	float *quantiles = new_quantiles(data, len, mask, mask_len, 100);
+	uint8_t *result = new_data(data, len, mask, mask_len, quantiles, 100);
 
 	FILE *fout = fopen(out, "wb");
 	fwrite(result, 1, len, fout);
