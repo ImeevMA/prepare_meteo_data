@@ -51,10 +51,15 @@ new_quantiles(const float *data, int len, int n)
 }
 
 static uint8_t *
-new_data(const float *data, int len, const float *qs, int n)
+new_data(const float *data, int len, const uint8_t *mask, int mask_len,
+	 const float *qs, int n)
 {
 	uint8_t *res = malloc(len);
 	for (int i = 0; i < len; ++i) {
+		if (mask[i % mask_len] == 0) {
+			res[i] = 0;
+			continue;
+		}
 		float d = data[i];
 		res[i] = n;
 		for (int j = 1; j < n; ++j) {
@@ -86,9 +91,30 @@ normalizer(const char *in, const char *out) {
 	fread(data, 1, size, fin);
 	fclose(fin);
 
+	int mask_len = 161 * 181;
+	FILE *fmask = fopen("mask", "rb");
+	if (fmask == NULL) {
+		fprintf(stderr, "Wrong mask file.\n");
+		return -1;
+	}
+	uint8_t *mask = malloc(mask_len * sizeof(*mask));
+	fread(mask, 1, mask_len, fmask);
+	int masked = 0;
+	for (int i = 0; i < mask_len; ++i)
+		masked += mask[i];
+	int masked_size = size / mask_len * masked;
+	float *masked_data = malloc(masked_size);
+
+	int j = 0;
+	for (int i = 0; i < size / 4; ++i) {
+		if (mask[i % mask_len] != 0)
+			masked_data[j++] = data[i];
+	}
+
+	int masked_len = masked_size / 4;
 	int len = size / 4;
-	float *quantiles = new_quantiles(data, len, 10);
-	uint8_t *result = new_data(data, len, quantiles, 10);
+	float *quantiles = new_quantiles(masked_data, masked_len, 10);
+	uint8_t *result = new_data(data, len, mask, mask_len, quantiles, 10);
 
 	FILE *fout = fopen(out, "wb");
 	fwrite(result, 1, len, fout);
