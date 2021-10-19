@@ -13,7 +13,8 @@ get_quantile(const float *data, int len, float min, float max, int i, int n)
 		return min;
 	if (i == n)
 		return max;
-	int k = (len / n) * i;
+	int m = i == 1 ? 1 : 999;
+	int k = (len / 1000.0) * m;
 	while (max - min > 0.01) {
 		int m = 0;
 		float d = (max + min) / 2;
@@ -102,26 +103,28 @@ normalizer(const char *in, const char *out) {
 	int masked = 0;
 	for (int i = 0; i < mask_len; ++i)
 		masked += mask[i];
-	int masked_size = size / mask_len * masked;
+	int masked_size = masked * sizeof(float);
 	float *masked_data = malloc(masked_size);
 
-	int j = 0;
-	for (int i = 0; i < size / 4; ++i) {
-		if (mask[i % mask_len] != 0)
-			masked_data[j++] = data[i];
-	}
-
-	int masked_len = masked_size / 4;
-	int len = size / 4;
-	float *quantiles = new_quantiles(masked_data, masked_len, 10);
-	uint8_t *result = new_data(data, len, mask, mask_len, quantiles, 10);
-
 	FILE *fout = fopen(out, "wb");
-	fwrite(result, 1, len, fout);
+	for (int k = 0; k < 1464; ++k) {
+		int j = 0;
+		int d = k * mask_len;
+		for (int i = 0; i < mask_len; ++i) {
+			if (mask[i % mask_len] != 0)
+				masked_data[j++] = data[i + d];
+		}
+
+		float *quantiles = new_quantiles(masked_data, masked, 3);
+		uint8_t *result = new_data(&data[d], mask_len, mask, mask_len,
+					   quantiles, 3);
+
+		fwrite(result, 1, mask_len, fout);
+		free(quantiles);
+		free(result);
+	}
 	fclose(fout);
 
-	free(quantiles);
-	free(result);
 	free(data);
 	return 0;
 }
