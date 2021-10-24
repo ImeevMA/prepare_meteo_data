@@ -130,16 +130,10 @@ read_data(const uint8_t *buf, float *res)
 }
 
 int
-converter(const char *in, const char *out)
+converter(const char *in)
 {
 	FILE *fin = fopen(in, "rb");
 	if (fin == NULL) {
-		fprintf(stderr, "Wrong input file.\n");
-		return -1;
-	}
-
-	FILE *fout = fopen(out, "wb");
-	if (fout == NULL) {
 		fprintf(stderr, "Wrong input file.\n");
 		return -1;
 	}
@@ -156,6 +150,13 @@ converter(const char *in, const char *out)
 		fprintf(stderr, "Malloc failed: %s\n", "res");
 		return -1;
 	}
+
+	FILE *fout = fopen("data", "wb");
+	if (fout == NULL) {
+		fprintf(stderr, "Wrong input file.\n");
+		return -1;
+	}
+
 	float metadata[8];
 	metadata[0] = LAT_RES;
 	metadata[1] = LON_RES;
