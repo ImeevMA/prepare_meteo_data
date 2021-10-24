@@ -9,9 +9,6 @@ enum {
 	LAT_CNT = 321,
 	LON_CNT = 361,
 	TOTAL_CNT = LAT_CNT * LON_CNT,
-	LAT_RES = 161,
-	LON_RES = 181,
-	TOTAL_RES = LAT_RES * LON_RES,
 };
 
 static inline int

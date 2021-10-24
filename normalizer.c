@@ -5,16 +5,29 @@
 
 #include "main.h"
 
+static float
+get_quantile(const float *data, int len, float min, float max, int k)
+{
+	while (max - min > 0.01) {
+		int m = 0;
+		float d = (max + min) / 2;
+		for (int i = 0; i < len; ++i) {
+			if (d > data[i])
+				++m;
+		}
+		if (m < k)
+			min = d;
+		else
+			max = d;
+	}
+	return (max + min) / 2;
+}
 
 static float
-get_quantile(const float *data, int len, float min, float max, int i, int n)
+get_min_max_quantile(const float *data, int len, float min, float max,
+		     bool is_min)
 {
-	if (i == 0)
-		return min;
-	if (i == n)
-		return max;
-	int m = i == 1 ? 1 : 999;
-	int k = (len / 1000.0) * m;
+	int k = (len / 1000.0) * is_min ? 1 : 999;
 	while (max - min > 0.01) {
 		int m = 0;
 		float d = (max + min) / 2;
@@ -46,18 +59,39 @@ new_quantiles(const float *data, int len, int n)
 	quantiles[n] = max;
 	for (int i = 1; i < n; ++i) {
 		float tmp_min = quantiles[i - 1];
-		quantiles[i] = get_quantile(data, len, tmp_min, max, i, n);
+		int k = (double)len / n * i;
+		quantiles[i] = get_quantile(data, len, tmp_min, max, k);
 	}
 	return quantiles;
 }
 
-static uint8_t *
-new_data(const float *data, int len, const uint8_t *mask, int mask_len,
-	 const float *qs, int n)
+static float *
+new_minmax_quantiles(const float *data, int len)
 {
-	uint8_t *res = malloc(len);
+	float *quantiles = malloc(4 * sizeof(float));
+	float min = data[0];
+	float max = data[0];
 	for (int i = 0; i < len; ++i) {
-		if (mask[i % mask_len] == 0) {
+		if (min > data[i])
+			min = data[i];
+		if (max < data[i])
+			max = data[i];
+	}
+	int min_limit = (double)len / 100;
+	int max_limit = (double)len / 100 * 99;
+	quantiles[0] = min;
+	quantiles[1] = get_quantile(data, len, min, max, min_limit);
+	quantiles[2] = get_quantile(data, len, min, max, max_limit);
+	quantiles[3] = max;
+	return quantiles;
+}
+
+static uint8_t *
+new_data(const float *data, const float *qs, int n)
+{
+	uint8_t *res = malloc(TOTAL_RES);
+	for (int i = 0; i < TOTAL_RES; ++i) {
+		if (!mask[i]) {
 			res[i] = 0;
 			continue;
 		}
@@ -74,57 +108,47 @@ new_data(const float *data, int len, const uint8_t *mask, int mask_len,
 }
 
 int
-normalizer(const char *in, const char *out) {
+normalizer(const char *in, const char *out, bool is_minmax) {
+	int masked_count = 0;
+	for (int i = 0; i < TOTAL_RES; ++i)
+		masked_count += mask[i];
+	int masked_size = masked_count * sizeof(float);
+	float *masked_data = malloc(masked_size);
+
 	FILE *fin = fopen(in, "rb");
 	if (fin == NULL) {
 		fprintf(stderr, "Wrong input file.\n");
 		return -1;
 	}
-	fseek(fin, 0, SEEK_END);
-	int size = ftell(fin) - 8 * sizeof(float);
-
-	fseek(fin, 8 * sizeof(float), SEEK_SET);
-	if (size > (1 << 30)) {
-		fprintf(stderr, "Too large malloc.\n");
-		return -1;
-	}
+	int size = TOTAL_RES * sizeof(float);
 	float *data = malloc(size);
-	fread(data, 1, size, fin);
-	fclose(fin);
-
-	int mask_len = 161 * 181;
-	FILE *fmask = fopen("mask", "rb");
-	if (fmask == NULL) {
-		fprintf(stderr, "Wrong mask file.\n");
-		return -1;
-	}
-	uint8_t *mask = malloc(mask_len * sizeof(*mask));
-	fread(mask, 1, mask_len, fmask);
-	int masked = 0;
-	for (int i = 0; i < mask_len; ++i)
-		masked += mask[i];
-	int masked_size = masked * sizeof(float);
-	float *masked_data = malloc(masked_size);
-
 	FILE *fout = fopen(out, "wb");
-	for (int k = 0; k < 1464; ++k) {
+	fseek(fin, 8 * sizeof(float), SEEK_SET);
+	while (fread(data, sizeof(float), TOTAL_RES, fin) == TOTAL_RES) {
 		int j = 0;
-		int d = k * mask_len;
-		for (int i = 0; i < mask_len; ++i) {
-			if (mask[i % mask_len] != 0)
-				masked_data[j++] = data[i + d];
+		for (int i = 0; i < TOTAL_RES; ++i) {
+			if (mask[i] != 0)
+				masked_data[j++] = data[i];
 		}
 
-		float *quantiles = new_quantiles(masked_data, masked, 3);
-		uint8_t *result = new_data(&data[d], mask_len, mask, mask_len,
-					   quantiles, 3);
+		float *quantiles;
+		uint8_t *result;
+		if (is_minmax) {
+			quantiles = new_minmax_quantiles(masked_data,
+							 masked_count);
+			result = new_data(data, quantiles, 3);
+		} else {
+			quantiles = new_quantiles(masked_data, masked_count,
+						  10);
+			result = new_data(data, quantiles, 10);
+		}
 
-		fwrite(result, 1, mask_len, fout);
+		fwrite(result, 1, TOTAL_RES, fout);
 		free(quantiles);
 		free(result);
 	}
-	fclose(fout);
-
 	free(data);
+	fclose(fout);
+	fclose(fin);
 	return 0;
 }

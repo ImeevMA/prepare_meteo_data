@@ -6,7 +6,8 @@
 enum mode {
 	CONVERTER	= 0,
 	NORMALIZER	= 1,
-	COEFFICIENTS	= 1 << 1,
+	MINMAX		= 1 << 1,
+	COEFFICIENTS	= 1 << 2,
 };
 
 int
@@ -32,6 +33,14 @@ main(int argc, const char **argv)
 		case 'n':
 			mode |= NORMALIZER;
 			break;
+		case 'm':
+			if ((mode & NORMALIZER) != 0) {
+				fprintf(stderr, "Cannot execute -n and -m at "
+						"the same time.\n");
+				return -1;
+			}
+			mode |= MINMAX;
+			break;
 		case 'c':
 			mode |= COEFFICIENTS;
 			break;
@@ -46,15 +55,36 @@ main(int argc, const char **argv)
 	}
 	if (converter(fin) != 0)
 		return -1;
-	if ((mode & NORMALIZER) != 0 && normalizer("data", "data_norm") != 0)
+	if (mode == 0)
+		return 0;
+
+	FILE *fmask = fopen("mask", "rb");
+	if (fmask == NULL ||
+	    fread(mask, sizeof(bool), TOTAL_RES, fmask) != TOTAL_RES) {
+		fprintf(stderr, "Wrong mask file.\n");
+		return -1;
+	}
+	fclose(fmask);
+
+	if ((mode & NORMALIZER) != 0 &&
+	    normalizer("data", "data_norm", false) != 0)
+		return -1;
+	else if ((mode & MINMAX) != 0 &&
+	    normalizer("data", "data_norm", true) != 0)
 		return -1;
 	if ((mode & COEFFICIENTS) != 0) {
 		if (coefficients() != 0)
 			return -1;
 		if ((mode & NORMALIZER) != 0) {
-			if (normalizer("data_a", "data_a_norm") != 0)
+			if (normalizer("data_a", "data_a_norm", false) != 0)
 				return -1;
-			if (normalizer("data_b", "data_b_norm") != 0)
+			if (normalizer("data_b", "data_b_norm", false) != 0)
+				return -1;
+		}
+		if ((mode & MINMAX) != 0) {
+			if (normalizer("data_a", "data_a_norm", true) != 0)
+				return -1;
+			if (normalizer("data_b", "data_b_norm", true) != 0)
 				return -1;
 		}
 	}
