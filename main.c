@@ -6,6 +6,7 @@
 enum mode {
 	CONVERTER	= 0,
 	NORMALIZER	= 1,
+	COEFFICIENTS	= 1 << 1,
 };
 
 int
@@ -29,7 +30,10 @@ main(int argc, const char **argv)
 
 		switch (argv[i][1]) {
 		case 'n':
-			mode = NORMALIZER;
+			mode |= NORMALIZER;
+			break;
+		case 'c':
+			mode |= COEFFICIENTS;
 			break;
 		default:
 			fprintf(stderr, "Wrong option.\n");
@@ -44,5 +48,15 @@ main(int argc, const char **argv)
 		return -1;
 	if ((mode & NORMALIZER) != 0 && normalizer("data", "data_norm") != 0)
 		return -1;
+	if ((mode & COEFFICIENTS) != 0) {
+		if (coefficients() != 0)
+			return -1;
+		if ((mode & NORMALIZER) != 0) {
+			if (normalizer("data_a", "data_a_norm") != 0)
+				return -1;
+			if (normalizer("data_b", "data_b_norm") != 0)
+				return -1;
+		}
+	}
 	return 0;
 }

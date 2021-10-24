@@ -15,16 +15,6 @@ enum {
 };
 
 static inline int
-read4(const uint8_t *buf, int pos)
-{
-	uint8_t b3 = buf[pos];
-	uint8_t b2 = buf[pos + 1];
-	uint8_t b1 = buf[pos + 2];
-	uint8_t b0 = buf[pos + 3];
-	return (((((b3 << 8) + b2) << 8) + b1) << 8) + b0;
-}
-
-static inline int
 read3(const uint8_t *buf, int pos)
 {
 	uint8_t b2 = buf[pos];
@@ -39,12 +29,6 @@ read2(const uint8_t *buf, int pos)
 	uint8_t b1 = buf[pos];
 	uint8_t b0 = buf[pos + 1];
 	return (b1 << 8) + b0;
-}
-
-static inline int
-read1(const uint8_t *buf, int pos)
-{
-	return buf[pos];
 }
 
 static int
