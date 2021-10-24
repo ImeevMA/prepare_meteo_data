@@ -28,6 +28,9 @@ main(int argc, const char **argv)
 		}
 
 		switch (argv[i][1]) {
+		case 'n':
+			mode = NORMALIZER;
+			break;
 		default:
 			fprintf(stderr, "Wrong option.\n");
 			return -1;
@@ -38,6 +41,8 @@ main(int argc, const char **argv)
 		return -1;
 	}
 	if (converter(fin) != 0)
+		return -1;
+	if ((mode & NORMALIZER) != 0 && normalizer("data", "data_norm") != 0)
 		return -1;
 	return 0;
 }
